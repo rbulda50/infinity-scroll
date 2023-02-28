@@ -8,6 +8,7 @@ export default class ImagesApiService {
         this.searchQuery = '';
         this.page = 1;
         this.loadedHits = 0;
+        this.totalHits = null;
     }
     async fetchImages() {
         try {
@@ -25,6 +26,7 @@ export default class ImagesApiService {
             const response = await axios(BASE_URL, options);
             this.page += 1;
             this.loadedHits += options.params.per_page;
+            this.totalHits = response.data.totalHits;
             return response.data;
         } catch (error) {
             console.log(error);

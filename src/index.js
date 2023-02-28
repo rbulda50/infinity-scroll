@@ -3,6 +3,8 @@ import createMarkup from './js-modules/createMarkup';
 import { onError, onEndLoadMore, onTotalHitsNotification } from './js-modules/notifications';
 import SimpleLightbox from "simplelightbox";
 import "simplelightbox/dist/simple-lightbox.min.css";
+import throttle from 'lodash.throttle';
+
 
 const refs = {
     galleryContainer: document.querySelector('.gallery'),
@@ -17,40 +19,54 @@ const simpleGallery = new SimpleLightbox('.gallery a', {
 });
 
 refs.form.addEventListener('submit', onFindImages);
+window.addEventListener('scroll', throttle(checkPosition, 250))
 
 async function onFindImages(e) {
+    try {
     e.preventDefault();
+    imagesApiService.query = e.currentTarget.elements.searchQuery.value.trim();
 
-    const inputValue = e.currentTarget.elements.searchQuery.value;
-    imagesApiService.query = inputValue;
-
-    if (inputValue.trim() === '') {
+    if (imagesApiService.query === '') {
         return onError();
     } 
-    imagesApiService.resetPage();
-    imagesApiService.resetHits();
-    clearImagesContainer();
+        imagesApiService.resetPage();
+        imagesApiService.resetHits();
+        clearImagesContainer();
+        const {hits, totalHits} = await imagesApiService.fetchImages();
 
-    try {
-        const response = await imagesApiService.fetchImages();
-        if (response.hits.length === 0) {
-            return onError();
+        if (hits.length !== 0) {
+                onTotalHitsNotification(totalHits);
+                return renderImagesMarkup(hits);
             }
-            onTotalHitsNotification(response.totalHits);
-            renderImagesMarkup(response.hits);
     } catch (error) {
-        console.log(error);
+        console.log(error)
     }
 };
 
+async function onLoadMore() {
+    if (imagesApiService.loadedHits > imagesApiService.totalHits) {
+        onEndLoadMore();
+    }
+    const response = await imagesApiService.fetchImages();
+    return renderImagesMarkup(response.hits)
+};
+
+async function checkPosition() {
+    const height = document.body.offsetHeight;
+    const screenHeight = window.innerHeight;
+    const scrolled = window.scrollY;
+    const threshold = height - screenHeight / 2;
+    const position = scrolled + screenHeight;
+    if (position >= threshold) {
+        return onLoadMore();
+    };
+};
 
 function renderImagesMarkup(images) {
     refs.galleryContainer.insertAdjacentHTML('beforeend', createMarkup(images));
-    simpleGallery.refresh();
+    return simpleGallery.refresh();
 };
 
 function clearImagesContainer() {
     refs.galleryContainer.innerHTML = '';
 };
-
-
