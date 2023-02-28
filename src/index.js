@@ -20,24 +20,26 @@ const simpleGallery = new SimpleLightbox('.gallery a', {
 
 refs.form.addEventListener('submit', onFindImages);
 
+
 async function onFindImages(e) {
+        observer.unobserve(refs.bottomOfPage);
     try {
             e.preventDefault();
             imagesApiService.searchQuery = e.currentTarget.elements.searchQuery.value.trim();
 
         if (!imagesApiService.searchQuery) {
-            clearImagesContainer();
             return onError();
         }
             clearImagesContainer();
             imagesApiService.resetPage();
             imagesApiService.resetHits();
-            const response = await imagesApiService.fetchImages();
+        const response = await imagesApiService.fetchImages();
         if (imagesApiService.totalHits === 0) {
             return onError();
         }
             onTotalHitsNotification(imagesApiService.totalHits);
             renderImagesMarkup(response.hits);
+            observer.observe(refs.bottomOfPage);
             return;
     } catch (error) {
         console.log(error);
@@ -46,25 +48,28 @@ async function onFindImages(e) {
 
 const onLoadMore = async entries => {
     entries.forEach(async entry => {
+        if (imagesApiService.loadedHits > imagesApiService.totalHits) {
+            onEndLoadMore();
+            return;
+        } 
         if (entry.isIntersecting &&
             imagesApiService.loadedHits < imagesApiService.totalHits &&
             imagesApiService.searchQuery !== '') {
             const response = await imagesApiService.fetchImages();
             renderImagesMarkup(response.hits);
-        } else if (imagesApiService.loadedHits > imagesApiService.totalHits) {
-            return onEndLoadMore();
-        };
+            }
     });
 };
 
 const observer = new IntersectionObserver(onLoadMore, {
-  rootMargin: '200px',
+    rootMargin: '200px',
 });
-observer.observe(refs.bottomOfPage)
+// observer.observe(refs.bottomOfPage);
 
 function renderImagesMarkup(images) {
     refs.galleryContainer.insertAdjacentHTML('beforeend', createMarkup(images));
     simpleGallery.refresh();
+    // console.log(images);
     return;
 };
 
