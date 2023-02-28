@@ -27,7 +27,7 @@ export default class ImagesApiService {
             this.page += 1;
             this.loadedHits += options.params.per_page;
             this.totalHits = response.data.totalHits;
-            return response.data;
+            return await response.data;
         } catch (error) {
             console.log(error);
         }

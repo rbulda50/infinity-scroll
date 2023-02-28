@@ -3,12 +3,12 @@ import createMarkup from './js-modules/createMarkup';
 import { onError, onEndLoadMore, onTotalHitsNotification } from './js-modules/notifications';
 import SimpleLightbox from "simplelightbox";
 import "simplelightbox/dist/simple-lightbox.min.css";
-import throttle from 'lodash.throttle';
 
 
 const refs = {
     galleryContainer: document.querySelector('.gallery'),
     form: document.querySelector('.search-form'),
+    bottomOfPage: document.querySelector('#bottomOfPage'),
 };
 
 const imagesApiService = new ImagesApiService();
@@ -19,52 +19,53 @@ const simpleGallery = new SimpleLightbox('.gallery a', {
 });
 
 refs.form.addEventListener('submit', onFindImages);
-window.addEventListener('scroll', throttle(checkPosition, 250))
 
 async function onFindImages(e) {
     try {
-    e.preventDefault();
-    imagesApiService.searchQuery = e.currentTarget.elements.searchQuery.value.trim();
+            e.preventDefault();
+            imagesApiService.searchQuery = e.currentTarget.elements.searchQuery.value.trim();
 
-    if (imagesApiService.searchQuery === '') {
-        return onError();
-    } 
-        imagesApiService.resetPage();
-        imagesApiService.resetHits();
-        clearImagesContainer();
-        const {hits} = await imagesApiService.fetchImages();
-
-        if (hits.length !== 0) {
-                onTotalHitsNotification(imagesApiService.totalHits);
-                return renderImagesMarkup(hits);
-            }
+        if (!imagesApiService.searchQuery) {
+            clearImagesContainer();
+            return onError();
+        }
+            clearImagesContainer();
+            imagesApiService.resetPage();
+            imagesApiService.resetHits();
+            const response = await imagesApiService.fetchImages();
+        if (imagesApiService.totalHits === 0) {
+            return onError();
+        }
+            onTotalHitsNotification(imagesApiService.totalHits);
+            renderImagesMarkup(response.hits);
+            return;
     } catch (error) {
-        console.log(error)
-    }
-};
-
-async function onLoadMore() {
-    if (imagesApiService.loadedHits > imagesApiService.totalHits) {
-        onEndLoadMore();
-    }
-    const response = await imagesApiService.fetchImages();
-    return renderImagesMarkup(response.hits)
-};
-
-async function checkPosition() {
-    const height = document.body.offsetHeight;
-    const screenHeight = window.innerHeight;
-    const scrolled = window.scrollY;
-    const threshold = height - screenHeight / 2;
-    const position = scrolled + screenHeight;
-    if (position >= threshold) {
-        return onLoadMore();
+        console.log(error);
     };
 };
 
+const onLoadMore = async entries => {
+    entries.forEach(async entry => {
+        if (entry.isIntersecting &&
+            imagesApiService.loadedHits < imagesApiService.totalHits &&
+            imagesApiService.searchQuery !== '') {
+            const response = await imagesApiService.fetchImages();
+            renderImagesMarkup(response.hits);
+        } else if (imagesApiService.loadedHits > imagesApiService.totalHits) {
+            return onEndLoadMore();
+        };
+    });
+};
+
+const observer = new IntersectionObserver(onLoadMore, {
+  rootMargin: '200px',
+});
+observer.observe(refs.bottomOfPage)
+
 function renderImagesMarkup(images) {
     refs.galleryContainer.insertAdjacentHTML('beforeend', createMarkup(images));
-    return simpleGallery.refresh();
+    simpleGallery.refresh();
+    return;
 };
 
 function clearImagesContainer() {
