@@ -24,18 +24,18 @@ window.addEventListener('scroll', throttle(checkPosition, 250))
 async function onFindImages(e) {
     try {
     e.preventDefault();
-    imagesApiService.query = e.currentTarget.elements.searchQuery.value.trim();
+    imagesApiService.searchQuery = e.currentTarget.elements.searchQuery.value.trim();
 
-    if (imagesApiService.query === '') {
+    if (imagesApiService.searchQuery === '') {
         return onError();
     } 
         imagesApiService.resetPage();
         imagesApiService.resetHits();
         clearImagesContainer();
-        const {hits, totalHits} = await imagesApiService.fetchImages();
+        const {hits} = await imagesApiService.fetchImages();
 
         if (hits.length !== 0) {
-                onTotalHitsNotification(totalHits);
+                onTotalHitsNotification(imagesApiService.totalHits);
                 return renderImagesMarkup(hits);
             }
     } catch (error) {
