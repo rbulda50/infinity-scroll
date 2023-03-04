@@ -20,6 +20,17 @@ const simpleGallery = new SimpleLightbox('.gallery a', {
 
 refs.form.addEventListener('submit', onFindImages);
 
+function smoothScroll() {
+    const { height: cardHeight } = document
+  .querySelector(".gallery")
+  .firstElementChild.getBoundingClientRect();
+
+window.scrollBy({
+  top: cardHeight * 2,
+  behavior: "smooth",
+});
+};
+
 
 async function onFindImages(e) {
         observer.unobserve(refs.bottomOfPage);
@@ -39,7 +50,7 @@ async function onFindImages(e) {
         }
             onTotalHitsNotification(imagesApiService.totalHits);
             renderImagesMarkup(response.hits);
-            observer.observe(refs.bottomOfPage);
+        observer.observe(refs.bottomOfPage);
             return;
     } catch (error) {
         console.log(error);
@@ -57,14 +68,14 @@ const onLoadMore = async entries => {
             imagesApiService.searchQuery !== '') {
             const response = await imagesApiService.fetchImages();
             renderImagesMarkup(response.hits);
-            }
+            smoothScroll()
+        }
     });
 };
 
 const observer = new IntersectionObserver(onLoadMore, {
     rootMargin: '200px',
 });
-// observer.observe(refs.bottomOfPage);
 
 function renderImagesMarkup(images) {
     refs.galleryContainer.insertAdjacentHTML('beforeend', createMarkup(images));
